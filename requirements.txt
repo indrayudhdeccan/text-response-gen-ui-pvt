@@ -1,4 +1,4 @@
-gradio
+streamlit
 openai
 anthropic
 supabase

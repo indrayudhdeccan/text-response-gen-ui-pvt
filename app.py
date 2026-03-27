@@ -1,5 +1,5 @@
 import uuid
-import gradio as gr
+import streamlit as st
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -7,53 +7,31 @@ load_dotenv()
 from llm import get_client, MODEL_OPTIONS
 from storage.supabase import save_response
 
+st.set_page_config(page_title="Text Response Generator", layout="centered")
+st.title("Text Response Generator")
 
-def handle_prompt(prompt: str, model_name: str):
+model_name = st.selectbox("Model", MODEL_OPTIONS)
+prompt = st.text_area("Prompt", placeholder="Type your prompt here...", height=150)
+
+if st.button("Generate", type="primary"):
     if not prompt.strip():
-        return "", "Please enter a prompt."
+        st.warning("Please enter a prompt.")
+    else:
+        uid = str(uuid.uuid4())
 
-    uid = str(uuid.uuid4())
+        with st.spinner("Generating response..."):
+            try:
+                client = get_client(model_name)
+                response = client.generate(prompt)
+            except Exception as e:
+                st.error(f"LLM error: {e}")
+                st.stop()
 
-    try:
-        client = get_client(model_name)
-        response = client.generate(prompt)
-    except Exception as e:
-        return "", f"LLM error: {e}"
+        st.subheader("Response")
+        st.markdown(response)
 
-    try:
-        save_response(uid, prompt, response, model_name)
-        status = f"Saved to Supabase  |  id: {uid}"
-    except Exception as e:
-        status = f"Response generated but failed to save: {e}"
-
-    return response, status
-
-
-with gr.Blocks(title="Text Response Generator") as demo:
-    gr.Markdown("## Text Response Generator")
-
-    with gr.Row():
-        model_dropdown = gr.Dropdown(
-            choices=MODEL_OPTIONS,
-            value=MODEL_OPTIONS[0],
-            label="Model",
-        )
-
-    prompt_box = gr.Textbox(
-        label="Prompt",
-        placeholder="Type your prompt here...",
-        lines=4,
-    )
-    submit_btn = gr.Button("Generate", variant="primary")
-
-    response_box = gr.Textbox(label="Response", lines=12, interactive=False)
-    status_bar = gr.Textbox(label="Status", interactive=False)
-
-    submit_btn.click(
-        fn=handle_prompt,
-        inputs=[prompt_box, model_dropdown],
-        outputs=[response_box, status_bar],
-    )
-
-if __name__ == "__main__":
-    demo.launch()
+        try:
+            save_response(uid, prompt, response, model_name)
+            st.success(f"Saved to Supabase  |  id: {uid}")
+        except Exception as e:
+            st.warning(f"Response generated but failed to save: {e}")
