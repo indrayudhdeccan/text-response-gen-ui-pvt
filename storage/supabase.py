@@ -4,16 +4,18 @@ from supabase import create_client, Client
 TABLE = "responses"
 
 _client: Client | None = None
+_current_url: str | None = None
 
 
 def _get_client() -> Client:
-    global _client
-    if _client is None:
-        url = os.environ.get("SUPABASE_URL")
-        key = os.environ.get("SUPABASE_KEY")
-        if not url or not key:
-            raise EnvironmentError("SUPABASE_URL and SUPABASE_KEY must be set")
+    global _client, _current_url
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_KEY")
+    if not url or not key:
+        raise EnvironmentError("SUPABASE_URL and SUPABASE_KEY must be set")
+    if _client is None or _current_url != url:
         _client = create_client(url, key)
+        _current_url = url
     return _client
 
 
